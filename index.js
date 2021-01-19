@@ -1,7 +1,10 @@
-const { time } = require("console");
+try {
+const { time, timeStamp } = require("console");
 const ds=require("discord.js")
 const fs=require("fs");
+
 const quarantine=require("./quarantine.json");
+
 const client=new ds.Client();
 const config=require("./config.json");
 const { role } = require("./role.json");
@@ -27,24 +30,69 @@ client.on('message', async (message)=>{
                 .setDescription("Non hai i permessi o hai formulato male il comando!")
                 .setColor("#54aedb")
                 .setFooter("VinnyHub","https://media.discordapp.net/attachments/798827498061692928/801018255363538954/WhatsApp_Image_2020-11-24_at_17.27.41.jpeg");
-            switch(args[0]){
+            const mention=await message.mentions.members.first();
+                switch(args[0]){
                 case "q!quarantine":
                     if(!args[1]) return message.reply(error);
-                    if(!message.mentions.members.first()) return message.reply(error);
-                    if(message.member.roles.cache.first()!==role) return message.reply(error);
-                    const roles=message.mentions.members.first().roles.cache.array();
-                    for (let index = 0; index < roles.length; index++) {
-                        message.mentions.members.first().roles.cache.first().delete();
+                    if(!mention) return message.reply(error);
+                    if(message.member.id==message.guild.ownerID){
+                        if (mention.roles.cache.some(role=>{role.id!==role})) return message.reply(error);
                     }
-                    message.mentions.members.first().roles.set(quarantine);
-                    let succ=new ds.MessageEmbed()
-                        .setTitle(":ok:")
-                        .setDescription(`${message.mentions.members.first()} è stato messo in quarantena!`);
+                    const role_=mention.roles.cache.array();
+                    for (let index = 0; index < role_.length; index++) {
+                        mention.roles.remove(role_[index]);
+                    }
+                    const role_e = message.guild.roles.cache.find(role => role.id==quarantine.role);
+                    const member = message.mentions.members.first();
+                    await member.roles.add(role_e.id);
+                    const d=new Date();
+                    var create=d.getTime();
+                    if(!args[2]){
+                        var expire=d.getHours()+1;
+                        expire=new Date(d.getFullYear(),d.getMonth(),d.getDate(),expire)
+                    }else if(args[2].endsWith("d")){
+                        let raw=args[2].slice(args[2].length-1,1);
+                        var expire=d.getDate()+raw;
+                        expire=new Date(d.getFullYear(),d.getMonth(),expire);
+                    }else if(args[2].endsWith("h")){
+                        let raw=args[2].slice(args[2].length-1,1);
+                        var expire=d.getHours()+raw;
+                        console.log(raw)
+                        expire=new Date(d.getFullYear(),d.getMonth(),d.getDate(),expire);
+                    }else if(args[2].endsWith("m")){
+                        let raw=args[2].slice(args[2].length-1,1);
+                        var expire=d.getMinutes()+raw;
+                        expire=new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),expire);
+                    }else{
+                        var expire=d.getHours()+1;
+                        expire=new Date(d.getFullYear(),d.getMonth(),d.getDate(),expire)
+                    }
+                    console.log(expire);
+                    var reason="Hai infranto le regole del server!";
+                    if(args[3]){
+                        reason=args[3];
+                    }
+                    fs.writeFile(`./members/${mention.id}.json`,`{
+                        "memberId":${mention.id},
+                        "username":"${mention.user.username}",
+                        "createdAt":"${create}",
+                        "expiresAt":"${expire}",
+                        "reason":"${reason}"
+                    }`,(err)=>{
+                        if(err) return console.log(err);
+                        console.log(`${mention.user.tag} è stato messo in quarantena per ${(expire-create)} minuti per ragione: ${reason}`);
+                        let succ=new ds.MessageEmbed()
+                            .setTitle(":ok:")
+                            .setDescription(`${mention} è stato messo in quarantena!`);
+                        message.reply(succ);
+                    });
+                    setTimeout(()=>{
+                        member.roles.remove(role_e);
+                    },expire-create);
                     break;
                 case "q!use":
-                    const mention= await message.mentions.roles.first();
                     if(!args[1]) return message.reply(error);
-                    if(!mention){
+                    if(!message.mentions.roles.first()){
                         message.reply("Non hai mezionato nessuno!");
                     }else
                     if(message.member.id!==message.guild.ownerID){
@@ -54,7 +102,7 @@ client.on('message', async (message)=>{
                             if(err) return console.error(err);
                             let succ=new ds.MessageEmbed()
                                 .setTitle(":ok:")
-                                .setDescription(`Il ruolo ${mention} può usare il comando q!quarantine`)
+                                .setDescription(`Il ruolo ${message.mentions.roles.first()} può usare il comando q!quarantine`)
                                 .setFooter("VinnyHub","https://media.discordapp.net/attachments/798827498061692928/801018255363538954/WhatsApp_Image_2020-11-24_at_17.27.41.jpeg");
                             message.reply(succ);
                         });
@@ -63,13 +111,15 @@ client.on('message', async (message)=>{
                 case "q!set":
                     if(!args[1]) return message.reply(error);
                     if(message.member.id!==message.guild.ownerID) return message.reply(error);
-                    fs.writeFile("./quarantine.json",`{ "role":${message.mentions.roles.first().id} }`,(err)=>{
-                        if(err) return console.error(err);
-                        let succ=new ds.MessageEmbed()
-                            .setTitle(":ok:")
-                            .setDescription(`Il ruolo ${message.mentions.roles.first()} è stato impostato come il ruolo di quarantena!`)
-                            .setFooter("VinnyHub","https://media.discordapp.net/attachments/798827498061692928/801018255363538954/WhatsApp_Image_2020-11-24_at_17.27.41.jpeg");
-                        message.reply(succ);
+                        const ret = message.mentions.roles.firstKey();
+                        console.log(ret)
+                        fs.writeFile("./quarantine.json",{role:ret},(err)=>{
+                            if(err) return console.error(err);
+                            let succ=new ds.MessageEmbed()
+                                .setTitle(":ok:")
+                                .setDescription(`Il ruolo ${message.mentions.roles.first()} è stato impostato come il ruolo di quarantena!`)
+                                .setFooter("VinnyHub","https://media.discordapp.net/attachments/798827498061692928/801018255363538954/WhatsApp_Image_2020-11-24_at_17.27.41.jpeg");
+                            message.reply(succ);
                     });
                     break;
                 case "q!test":
@@ -82,3 +132,6 @@ client.on('message', async (message)=>{
         }
     }
 });
+} catch (error) {
+    console.error(error);
+}
