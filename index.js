@@ -89,7 +89,7 @@ client.on('message', async (message)=>{
                         "expiresAfter":"${expire}"
                     }`,(err)=>{
                         if(err) return console.log(err);
-                        let channel=client.channels.cache.get(man.channel);
+                        let channel=await client.channels.cache.get(man.channel);
                         let embed=new ds.MessageEmbed()
                             .setTitle(message.mentions.members.first())
                             .setDescription(`è stato/a messo in quarantena per ${expire} minuti da ${message.member}`)
@@ -98,7 +98,7 @@ client.on('message', async (message)=>{
                     setTimeout(async ()=>{
                         await message.mentions.members.first().roles.remove(role_e).catch(err=>console.log(err));
                         await message.mentions.members.first().roles.add(message.guild.roles.cache.find(role => role.id==after.role).id).catch(err=>console.log(err));
-                        let channel=client.channels.cache.get(man.channel);
+                        let channel= await client.channels.cache.get(man.channel);
                         let embed=new ds.MessageEmbed()
                             .setTitle(message.mentions.members.first())
                             .setDescription(`è uscito dalla quarantena!`);
