@@ -4,7 +4,7 @@
   "description": "VinnyHub Quarantine bot",
   "main": "index.js",
   "scripts": {
-    "start": "npx nodemon",
+    "start": "node index.js --unhandled-rejections=none",
     "test": "node index.js"
   },
   "repository": {
